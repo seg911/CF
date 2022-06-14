@@ -2,18 +2,17 @@
 Parameters:
   DomainName:
     Type: String
-    Description: The DNS name of an existing Amazon Route 53 hosted zone e.g. nftbox.tk
-    AllowedPattern: (?!-)[a-zA-Z0-9-.]{1,63}(?<!-)
-    ConstraintDescription: must be a valid DNS zone name.
-  FullDomainName:
+    Description: The DNS name of an existing Amazon Route 53 hosted zone
+  BucketName:
     Type: String
-    Description: The full domain name e.g. www.jevsejev.io
-    AllowedPattern: (?!-)[a-zA-Z0-9-.]{1,63}(?<!-)
-    ConstraintDescription: must be a valid DNS zone name.
+    Description: Amazon S3 files bucket name
+  HostedZoneId:
+    Type: String
+    Description: Amazon Route53 Hosted Zone Id for DomainName
   AcmCertificateArn:
     Type: String
-    Description: the Amazon Resource Name (ARN) of an AWS Certificate Manager (ACM) certificate.
-    AllowedPattern: "arn:aws:acm:.*"
+    Description: Certificate Link
+#################################################################
 Mappings:
   RegionMap:
     us-east-1:
@@ -36,12 +35,12 @@ Resources:
   WebsiteBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Ref 'FullDomainName'
+      BucketName: !Ref 'BucketName'
       AccessControl: PublicRead
       WebsiteConfiguration:
         IndexDocument: index.html
         ErrorDocument: 404.html
-    DeletionPolicy: Retain
+    DeletionPolicy: Delete
   WebsiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -71,7 +70,7 @@ Resources:
         HttpVersion: 'http2'
         DefaultRootObject: index.html
         Aliases:
-        - !Ref 'FullDomainName'
+        - !Ref 'DomainName'
         DefaultCacheBehavior:
           AllowedMethods:
           - GET
@@ -92,18 +91,12 @@ Resources:
     Properties:
       HostedZoneName: !Join ['', [!Ref 'DomainName', .]]
       RecordSets:
-      - Name: !Ref 'FullDomainName'
+      - Name: !Ref 'DomainName'
         Type: A
         AliasTarget:
-          HostedZoneId: Z2FDTNDATAQYW2
+          HostedZoneId: !Ref 'HostedZoneId'
           DNSName: !GetAtt [WebsiteCloudfront, DomainName]
 Outputs:
-  BucketName:
-    Value: !Ref 'WebsiteBucket'
-    Description: Name of S3 bucket to hold website content
   CloudfrontEndpoint:
-    Value: !GetAtt [WebsiteCloudfront, DomainName]
-    Description: Endpoint for Cloudfront distribution
-  FullDomain:
-    Value: !Ref 'FullDomainName'
-    Description: Full DomainName
+    Value: !Ref WebsiteCloudfront
+    Description: ID CloudFront
